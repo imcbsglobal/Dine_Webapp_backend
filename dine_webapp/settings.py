@@ -25,7 +25,8 @@ SECRET_KEY = 'django-insecure-1ms+mk02yi2kzs27lm_&-aukdux)_3&53y1i##m&@wmhy%js%(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'dinewebappapi.sysmac.in','www.dinewebappapi.sysmac.in']
+
 
 
 # Application definition
