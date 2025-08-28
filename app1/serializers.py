@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import AccUsers
+from .models import AccUsers,DineBill
 
 class AccUsersSerializer(serializers.ModelSerializer):
     class Meta:
@@ -20,3 +20,14 @@ class TbItemMasterSerializer(serializers.ModelSerializer):
             'rate', 'rate1', 'rate2', 'rate3', 'rate4', 'rate5', 'rate6', 'rate7',
             'kitchen', 'category'
         ]
+
+
+
+
+from rest_framework import serializers
+from .models import DineBill
+
+class DineBillSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DineBill
+        fields = ['billno', 'time_field', 'user_field', 'amount']
