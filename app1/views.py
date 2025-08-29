@@ -149,3 +149,41 @@ def dine_bill_api(request):
             'status': 'error',
             'message': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+
+
+
+
+from django.db.models import Sum, Count
+from django.db.models.functions import TruncDate
+
+@api_view(['GET'])
+def bill_day_summary(request):
+    """
+    GET /api/bill-day-summary/
+    -> Returns total bill amount and count grouped by each day
+    """
+    try:
+        # Group bills by date
+        summary = (
+            DineBill.objects
+            .values(date=TruncDate('time_field'))
+            .annotate(
+                total_bill_amount=Sum('amount'),
+                total_bill_count=Count('billno')
+            )
+            .order_by('-date')
+        )
+
+        return Response({
+            'status': 'success',
+            'count': summary.count(),
+            'data': list(summary)
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            'status': 'error',
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
