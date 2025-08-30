@@ -187,3 +187,119 @@ def bill_day_summary(request):
             'status': 'error',
             'message': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import DineBill, CancelledBills
+from .serializers import DineCancelledBillsSerializer
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Add this view class to your views.py file
+class DineCancelledBillsAPIView(APIView):
+    def get(self, request):
+        """
+        GET endpoint for dinecancelledbills
+        Returns: date, billno, creditcard, colnstatus
+        Combines data from DineBill and CancelledBills tables
+        """
+        try:
+            from django.db import connection
+            
+            # Raw SQL query to join both tables based on billno
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        COALESCE(cb.date, db.date) as date,
+                        cb.billno,
+                        cb.creditcard,
+                        cb.colnstatus
+                    FROM cancelled_bills cb
+                    LEFT JOIN dine_bill db ON cb.billno = db.billno
+                    ORDER BY cb.billno DESC
+                """)
+                
+                rows = cursor.fetchall()
+                
+                # Convert to list of dictionaries
+                result_data = []
+                for row in rows:
+                    result_data.append({
+                        'date': row[0],
+                        'billno': row[1],
+                        'creditcard': row[2],
+                        'colnstatus': row[3]
+                    })
+            
+            # Serialize the data
+            serializer = DineCancelledBillsSerializer(result_data, many=True)
+            
+            return Response({
+                'status': 'success',
+                'count': len(serializer.data),
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error fetching dine cancelled bills: {str(e)}")
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# Alternative implementation using Django ORM join (more Django-like approach)
+class DineCancelledBillsAPIViewAlternative(APIView):
+    def get(self, request):
+        """
+        Alternative implementation using Django ORM
+        """
+        try:
+            from django.db import connection
+            
+            # Raw SQL query to join both tables
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        COALESCE(cb.date, db.date) as date,
+                        cb.billno,
+                        cb.creditcard,
+                        cb.colnstatus
+                    FROM cancelled_bills cb
+                    LEFT JOIN dine_bill db ON cb.billno = db.billno
+                    ORDER BY cb.billno DESC
+                """)
+                
+                rows = cursor.fetchall()
+                
+                # Convert to list of dictionaries
+                result_data = []
+                for row in rows:
+                    result_data.append({
+                        'date': row[0],
+                        'billno': row[1],
+                        'creditcard': row[2],
+                        'colnstatus': row[3]
+                    })
+            
+            # Serialize the data
+            serializer = DineCancelledBillsSerializer(result_data, many=True)
+            
+            return Response({
+                'status': 'success',
+                'count': len(serializer.data),
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error fetching cancelled bills: {str(e)}")
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

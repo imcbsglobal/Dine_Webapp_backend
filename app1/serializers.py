@@ -31,3 +31,19 @@ class DineBillSerializer(serializers.ModelSerializer):
     class Meta:
         model = DineBill
         fields = ['billno', 'time_field', 'user_field', 'amount']
+
+
+
+
+
+from rest_framework import serializers
+
+class DineCancelledBillsSerializer(serializers.Serializer):
+    """
+    Serializer for combined DineBill and CancelledBills data
+    Shows: date, billno, creditcard, colnstatus
+    """
+    date = serializers.DateField(allow_null=True)
+    billno = serializers.DecimalField(max_digits=10, decimal_places=0)
+    creditcard = serializers.CharField(max_length=30, allow_null=True, allow_blank=True)
+    colnstatus = serializers.CharField(max_length=1, allow_null=True, allow_blank=True)
