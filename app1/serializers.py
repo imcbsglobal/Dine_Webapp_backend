@@ -47,3 +47,21 @@ class DineCancelledBillsSerializer(serializers.Serializer):
     billno = serializers.DecimalField(max_digits=10, decimal_places=0)
     creditcard = serializers.CharField(max_length=30, allow_null=True, allow_blank=True)
     colnstatus = serializers.CharField(max_length=1, allow_null=True, allow_blank=True)
+
+
+
+
+
+
+
+from rest_framework import serializers
+
+class DineKotSalesDetailSerializer(serializers.Serializer):
+    """
+    Serializer for dine kot sales detail summary
+    Shows: date, item_name, total_qty, total_amount for each day
+    """
+    date = serializers.DateField(allow_null=True)
+    item_name = serializers.CharField(max_length=60, allow_null=True, allow_blank=True)
+    total_qty = serializers.DecimalField(max_digits=15, decimal_places=3, allow_null=True)
+    total_amount = serializers.DecimalField(max_digits=20, decimal_places=5, allow_null=True)

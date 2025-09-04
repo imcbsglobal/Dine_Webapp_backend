@@ -303,3 +303,70 @@ class DineCancelledBillsAPIViewAlternative(APIView):
                 'status': 'error',
                 'message': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import DineKotSalesDetailSerializer
+import logging
+
+logger = logging.getLogger(__name__)
+
+class DineKotSalesDetailAPIView(APIView):
+    def get(self, request):
+        """
+        GET endpoint for dine-kot-sales-detail
+        Returns: date, item_name, total_qty, total_amount
+        Joins DineBill, DineKotSalesDetail, and TbItemMaster tables
+        Groups by date and item to show daily summary
+        """
+        try:
+            from django.db import connection
+            
+            # Raw SQL query to join all three tables and group by date and item
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        db.date as date,
+                        COALESCE(tim.item_name, dksd.item) as item_name,
+                        SUM(dksd.qty) as total_qty,
+                        SUM(dksd.qty * dksd.rate) as total_amount
+                    FROM dine_bill db
+                    INNER JOIN dine_kot_sales_detail dksd ON db.billno = dksd.billno
+                    LEFT JOIN tb_item_master tim ON dksd.item = tim.item_code
+                    WHERE db.date IS NOT NULL
+                    GROUP BY db.date, tim.item_name, dksd.item
+                    ORDER BY db.date DESC, tim.item_name ASC
+                """)
+                
+                rows = cursor.fetchall()
+                
+                # Convert to list of dictionaries
+                result_data = []
+                for row in rows:
+                    result_data.append({
+                        'date': row[0],
+                        'item_name': row[1],
+                        'total_qty': row[2],
+                        'total_amount': row[3]
+                    })
+            
+            # Serialize the data
+            serializer = DineKotSalesDetailSerializer(result_data, many=True)
+            
+            return Response({
+                'status': 'success',
+                'count': len(serializer.data),
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error fetching dine kot sales detail: {str(e)}")
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
