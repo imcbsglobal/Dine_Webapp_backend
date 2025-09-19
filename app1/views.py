@@ -191,7 +191,76 @@ def bill_day_summary(request):
 
 
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import DineBillMonth
+from .serializers import DineBillMonthSerializer
+from django.db.models import Sum, Count
+from django.db.models.functions import Extract
+import calendar
+from datetime import datetime
+import logging
 
+logger = logging.getLogger(__name__)
+
+class DineBillMonthAPIView(APIView):
+    def get(self, request):
+        """
+        GET endpoint for monthly bill summary
+        Returns all 12 months of current year with their data
+        Shows 0 for months with no data
+        """
+        try:
+            current_year = datetime.now().year
+            
+            # Get monthly data from DineBillMonth for current year
+            monthly_data = (
+                DineBillMonth.objects
+                .filter(date_field__year=current_year)
+                .values(month=Extract('date_field', 'month'))
+                .annotate(
+                    total_amount=Sum('amount'),
+                    total_count=Count('billno')
+                )
+                .order_by('month')
+            )
+            
+            # Convert to dictionary for easy lookup
+            data_dict = {item['month']: item for item in monthly_data}
+            
+            # Create result for all 12 months
+            result_data = []
+            for month in range(1, 13):
+                month_data = data_dict.get(month, {})
+                result_data.append({
+                    'month': month,
+                    'month_name': calendar.month_name[month],
+                    'total_amount': month_data.get('total_amount', 0) or 0,
+                    'total_count': month_data.get('total_count', 0)
+                })
+            
+            # Serialize the data
+            serializer = DineBillMonthSerializer(result_data, many=True)
+            
+            # Calculate yearly totals
+            yearly_total_amount = sum(item['total_amount'] for item in result_data)
+            yearly_total_count = sum(item['total_count'] for item in result_data)
+            
+            return Response({
+                'status': 'success',
+                'year': current_year,
+                'yearly_total_amount': yearly_total_amount,
+                'yearly_total_count': yearly_total_count,
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error fetching monthly bill data: {str(e)}")
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 from rest_framework.views import APIView
 from rest_framework.response import Response

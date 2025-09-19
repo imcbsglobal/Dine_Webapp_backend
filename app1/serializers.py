@@ -33,6 +33,15 @@ class DineBillSerializer(serializers.ModelSerializer):
         fields = ['billno', 'time_field', 'user_field', 'amount']
 
 
+class DineBillMonthSerializer(serializers.Serializer):
+    """
+    Serializer for monthly bill summary
+    Shows: month, month_name, total_amount, total_count for each month of current year
+    """
+    month = serializers.IntegerField()
+    month_name = serializers.CharField(max_length=20)
+    total_amount = serializers.DecimalField(max_digits=15, decimal_places=2, allow_null=True)
+    total_count = serializers.IntegerField()
 
 
 

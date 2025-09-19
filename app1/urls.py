@@ -6,7 +6,8 @@ from .views import (
     dine_bill_api,
     bill_day_summary,
     DineCancelledBillsAPIView,  # Add this new import
-    DineKotSalesDetailAPIView 
+    DineKotSalesDetailAPIView ,
+    DineBillMonthAPIView
 )
 
 urlpatterns = [
@@ -17,4 +18,5 @@ urlpatterns = [
     path('bill-day-summary/', bill_day_summary, name='bill_day_summary'),
     path('dinecancelledbills/', DineCancelledBillsAPIView.as_view(), name='dine_cancelled_bills_api'),  # NEW endpoint
     path('dine-kot-sales-detail/', DineKotSalesDetailAPIView.as_view(), name='dine_kot_sales_detail_api'),  # NEW endpoint
+    path('monthly-bills/', DineBillMonthAPIView.as_view(), name='dine_bill_month_api'),  # NEW endpoint
 ]
