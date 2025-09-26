@@ -189,15 +189,12 @@ def bill_day_summary(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import DineBillMonth
 from .serializers import DineBillMonthSerializer
 from django.db.models import Sum, Count
-from django.db.models.functions import Extract
 import calendar
 from datetime import datetime
 import logging
@@ -207,27 +204,56 @@ logger = logging.getLogger(__name__)
 class DineBillMonthAPIView(APIView):
     def get(self, request):
         """
-        GET endpoint for monthly bill summary
-        Returns all 12 months of current year with their data
-        Shows 0 for months with no data
+        GET endpoint for monthly bill summary from DineBillMonth table
+        Query parameters:
+        - year: specific year to filter (optional, defaults to latest year with data)
         """
         try:
-            current_year = datetime.now().year
+            from django.db import connection
             
-            # Get monthly data from DineBillMonth for current year
-            monthly_data = (
-                DineBillMonth.objects
-                .filter(date_field__year=current_year)
-                .values(month=Extract('date_field', 'month'))
-                .annotate(
-                    total_amount=Sum('amount'),
-                    total_count=Count('billno')
-                )
-                .order_by('month')
-            )
+            # Get the year parameter from query string, or find the latest year with data
+            requested_year = request.query_params.get('year')
+            
+            if requested_year:
+                target_year = int(requested_year)
+            else:
+                # Find the latest year that has data
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT EXTRACT(year FROM date) as year
+                        FROM dine_bill_month
+                        WHERE date IS NOT NULL
+                        ORDER BY year DESC
+                        LIMIT 1
+                    """)
+                    result = cursor.fetchone()
+                    target_year = int(result[0]) if result else datetime.now().year
+            
+            # Get monthly data from dine_bill_month table for the target year
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        EXTRACT(month FROM date) as month,
+                        SUM(amount) as total_amount,
+                        COUNT(DISTINCT billno) as total_count
+                    FROM dine_bill_month
+                    WHERE EXTRACT(year FROM date) = %s
+                    AND date IS NOT NULL
+                    GROUP BY EXTRACT(month FROM date)
+                    ORDER BY month
+                """, [target_year])
+                
+                rows = cursor.fetchall()
             
             # Convert to dictionary for easy lookup
-            data_dict = {item['month']: item for item in monthly_data}
+            data_dict = {}
+            for row in rows:
+                if row[0]:  # Check if month is not None
+                    month = int(row[0])
+                    data_dict[month] = {
+                        'total_amount': float(row[1] or 0),
+                        'total_count': int(row[2] or 0)
+                    }
             
             # Create result for all 12 months
             result_data = []
@@ -236,12 +262,9 @@ class DineBillMonthAPIView(APIView):
                 result_data.append({
                     'month': month,
                     'month_name': calendar.month_name[month],
-                    'total_amount': month_data.get('total_amount', 0) or 0,
+                    'total_amount': month_data.get('total_amount', 0),
                     'total_count': month_data.get('total_count', 0)
                 })
-            
-            # Serialize the data
-            serializer = DineBillMonthSerializer(result_data, many=True)
             
             # Calculate yearly totals
             yearly_total_amount = sum(item['total_amount'] for item in result_data)
@@ -249,10 +272,10 @@ class DineBillMonthAPIView(APIView):
             
             return Response({
                 'status': 'success',
-                'year': current_year,
+                'year': target_year,
                 'yearly_total_amount': yearly_total_amount,
                 'yearly_total_count': yearly_total_count,
-                'data': serializer.data
+                'data': result_data
             }, status=status.HTTP_200_OK)
             
         except Exception as e:
